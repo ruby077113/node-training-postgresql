@@ -2,6 +2,26 @@ require("dotenv").config();
 const http = require("http");
 const AppDataSource = require("./db");
 
+const headers = {
+  "Access-Control-Allow-Headers":
+    "Content-Type, Authorization, Content-Length, X-Requested-With",
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "PATCH, POST, GET,OPTIONS,DELETE",
+  "Content-Type": "application/json",
+};
+
+function isUndefined(value) {
+  return value === undefined;
+}
+
+function isNotValidSting(value) {
+  return typeof value !== "string" || value.trim().length === 0 || value === "";
+}
+
+function isNotValidInteger(value) {
+  return typeof value !== "number" || value < 0 || value % 1 !== 0;
+}
+
 const requestListener = async (req, res) => {
   let body = "";
   req.on("data", (chunk) => {
