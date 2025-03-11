@@ -1,9 +1,18 @@
 const express = require("express");
 const router = express.Router();
+const config = require("../../config/index");
 const { dataSource } = require("../../db/data-source");
 const logger = require("../../utils/logger")("admin-coaches");
 const { errorResponse, successResponse } = require("../../utils/response");
 const { validateString, validatedInteger } = require("../../utils/validation");
+const StatusCode = require("../../constant/StatusCode");
+
+const auth = require("../../middlewares/auth")({
+  secret: config.get("secret").jwtSecret,
+  userRepository: dataSource.getRepository("User"),
+  logger,
+});
+const isCoach = require("../../middlewares/isCoach");
 
 // 新增教練課程資料
 /**
@@ -19,7 +28,7 @@ const { validateString, validatedInteger } = require("../../utils/validation");
 	"meeting_url" : "https://...."
 }
  */
-router.post("/courses", async (req, res, next) => {
+router.post("/courses", auth, isCoach, async (req, res, next) => {
   try {
     const {
       user_id,
@@ -43,7 +52,7 @@ router.post("/courses", async (req, res, next) => {
       !validateString(meeting_url) ||
       !meeting_url.startsWith("https")
     ) {
-      errorResponse(res, 400, "欄位未正確填寫");
+      errorResponse(res, StatusCode.BAD_REQUEST, "欄位未正確填寫");
       return;
     }
     const UserRepo = dataSource.getRepository("User");
@@ -52,10 +61,10 @@ router.post("/courses", async (req, res, next) => {
       where: { id: user_id },
     });
     if (!existingUser) {
-      errorResponse(res, 400, "使用者不存在");
+      errorResponse(res, StatusCode.BAD_REQUEST, "使用者不存在");
       return;
     } else if (existingUser.role !== "COACH") {
-      errorResponse(res, 400, "使用者不是教練");
+      errorResponse(res, StatusCode.BAD_REQUEST, "使用者不是教練");
       return;
     }
     const skillRepo = dataSource.getRepository("Skill");
@@ -64,7 +73,7 @@ router.post("/courses", async (req, res, next) => {
       where: { id: skill_id },
     });
     if (!existingSkill) {
-      errorResponse(res, 400, "技能不存在");
+      errorResponse(res, StatusCode.BAD_REQUEST, "技能不存在");
       return;
     }
     const CourseRepo = dataSource.getRepository("Course");
@@ -94,7 +103,7 @@ router.post("/courses", async (req, res, next) => {
 });
 
 // 更新教練課程資料
-router.put("/courses/:courseId", async (req, res, next) => {
+router.put("/courses/:courseId", auth, isCoach, async (req, res, next) => {
   try {
     const { courseId } = req.params;
     const {
@@ -118,7 +127,7 @@ router.put("/courses/:courseId", async (req, res, next) => {
       !validateString(meeting_url) ||
       !meeting_url.startsWith("https")
     ) {
-      errorResponse(res, 400, "欄位未正確填寫");
+      errorResponse(res, StatusCode.BAD_REQUEST, "欄位未正確填寫");
       return;
     }
 
@@ -128,7 +137,7 @@ router.put("/courses/:courseId", async (req, res, next) => {
       where: { id: skill_id },
     });
     if (!existingSkill) {
-      errorResponse(res, 400, "技能不存在");
+      errorResponse(res, StatusCode.BAD_REQUEST, "技能不存在");
       return;
     }
     const CourseRepo = dataSource.getRepository("Course");
@@ -136,7 +145,7 @@ router.put("/courses/:courseId", async (req, res, next) => {
       where: { id: courseId },
     });
     if (!existingCourse) {
-      errorResponse(res, 400, "課程不存在");
+      errorResponse(res, StatusCode.BAD_REQUEST, "課程不存在");
       return;
     }
     const updateCourseResult = await CourseRepo.update(
@@ -152,7 +161,7 @@ router.put("/courses/:courseId", async (req, res, next) => {
       }
     );
     if (updateCourseResult.affected === 0) {
-      errorResponse(res, 400, "更新失敗");
+      errorResponse(res, StatusCode.BAD_REQUEST, "更新失敗");
       return;
     }
     const course = await CourseRepo.findOne({
@@ -169,10 +178,9 @@ router.put("/courses/:courseId", async (req, res, next) => {
 router.post("/:userId", async (req, res, next) => {
   try {
     const { userId } = req.params;
-    console.log("33333", userId);
     const { experience_years, description, profile_image_url } = req.body;
     if (!validateString(description) || !validatedInteger(experience_years)) {
-      errorResponse(res, 400, "欄位未正確填寫");
+      errorResponse(res, StatusCode.BAD_REQUEST, "欄位未正確填寫");
       return;
     }
     if (
@@ -181,10 +189,7 @@ router.post("/:userId", async (req, res, next) => {
       !profile_image_url.startsWith("https")
     ) {
       logger.warn("大頭貼網址錯誤");
-      res.status(400).json({
-        status: "failed",
-        message: "欄位未填寫正確",
-      });
+      errorResponse(res, StatusCode.BAD_REQUEST, "欄位未正確填寫");
       return;
     }
     const UserRepo = dataSource.getRepository("User");
@@ -193,11 +198,11 @@ router.post("/:userId", async (req, res, next) => {
       where: { id: userId },
     });
     if (!getUser) {
-      errorResponse(res, 400, "使用者不存在");
+      errorResponse(res, StatusCode.BAD_REQUEST, "使用者不存在");
       return;
     }
     if (getUser.role === "coach") {
-      errorResponse(res, 400, "使用者已經是教練");
+      errorResponse(res, StatusCode.BAD_REQUEST, "使用者已經是教練");
       return;
     }
     const CoachRepo = dataSource.getRepository("Coach");
@@ -213,7 +218,7 @@ router.post("/:userId", async (req, res, next) => {
       { role: "COACH" }
     );
     if (userUpdateResult.affected === 0) {
-      errorResponse(res, 400, "更新使用者失敗");
+      errorResponse(res, StatusCode.BAD_REQUEST, "更新使用者失敗");
       return;
     }
     const coachResult = await CoachRepo.save(newCoach);

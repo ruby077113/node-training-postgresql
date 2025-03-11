@@ -4,6 +4,7 @@ const { dataSource } = require("../db/data-source");
 const logger = require("../utils/logger")("Skill");
 const { errorResponse, successResponse } = require("../utils/response");
 const { validateString, validatedInteger } = require("../utils/validation");
+const StatusCode = require("../constant/StatusCode");
 
 router.get("/", async (req, res, next) => {
   try {
@@ -21,7 +22,7 @@ router.post("/", async (req, res, next) => {
   try {
     const { name } = req.body;
     if (!validateString(name)) {
-      errorResponse(res, 400, "欄位未填寫正確");
+      errorResponse(res, StatusCode.BAD_REQUEST, "欄位未填寫正確");
       return;
     }
     const skill = dataSource.getRepository("Skill");
@@ -48,7 +49,7 @@ router.delete("/:skillId", async (req, res, next) => {
   try {
     const { skillId } = req.params;
     if (!validateString(skillId)) {
-      errorResponse(res, 400, "ID錯誤");
+      errorResponse(res, StatusCode.BAD_REQUEST, "ID錯誤");
       return;
     }
     const result = await dataSource.getRepository("Skill").delete(skillId);

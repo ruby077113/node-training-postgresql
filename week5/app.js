@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const path = require("path");
 const pinoHttp = require("pino-http");
+const { errorResponse } = require("./utils/response");
 
 const logger = require("./utils/logger")("App");
 const creditPackageRouter = require("./routes/creditPackage");
@@ -9,6 +10,7 @@ const skillRouter = require("./routes/skill");
 const userRouter = require("./routes/user");
 const adminRouter = require("./routes/admin");
 const coachesRouter = require("./routes/coaches");
+const coursesRouter = require("./routes/courses");
 
 const app = express();
 app.use(cors());
@@ -36,6 +38,7 @@ app.use("/api/coaches/skill", skillRouter);
 app.use("/api/users", userRouter);
 app.use("/api/admin", adminRouter);
 app.use("/api/coaches", coachesRouter);
+app.use("/api/courses", coursesRouter);
 
 app.use((req, res, next) => {
   res.status(404).json({
@@ -45,7 +48,10 @@ app.use((req, res, next) => {
 });
 // eslint-disable-next-line no-unused-vars
 app.use((err, req, res, next) => {
-  req.log.error(err);
+  if (err.status) {
+    errorResponse(res, err.status, err.message);
+    return;
+  }
   res.status(500).json({
     status: "error",
     message: "伺服器錯誤",
